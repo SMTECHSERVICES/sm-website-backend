@@ -11,7 +11,7 @@ const corsOption = {
     origin:[
         'http://localhost:5173',
         'http://localhost:4173',
-        'https://www.smservice.co.in/',
+       
          process.env.CLIENT_URL
         ],
         methods:["GET","POST","PUT","DELETE","PATCH"],
@@ -26,6 +26,7 @@ const port = 3000;
 dotenv.config();
 
 app.use(cors(corsOption))
+app.options('*', cors(corsOption)); 
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 app.use(cookieParser())
