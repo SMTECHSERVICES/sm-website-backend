@@ -33,7 +33,7 @@ app.use(cookieParser())
 main().catch(err => console.log(err));
 
 async function main() {
-  await mongoose.connect('mongodb://127.0.0.1:27017/sm-Website-backend');
+  await mongoose.connect(process.env.MONGO_URI);
   console.log('database connected')
 
   // 
