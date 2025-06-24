@@ -11,6 +11,7 @@ const corsOption = {
     origin:[
         'http://localhost:5173',
         'http://localhost:4173',
+        'https://www.smservice.co.in/',
          process.env.CLIENT_URL
         ],
         methods:["GET","POST","PUT","DELETE","PATCH"],
