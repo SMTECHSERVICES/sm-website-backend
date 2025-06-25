@@ -2,10 +2,13 @@
 
 
 import express from 'express';
-import Student from '../model/student.js';
+import {Student,StudentEnrolledModel} from '../model/student.js';
+import {Course, Lesson} from '../model/course.js';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import generateCookies from '../lib/generateCookies.js';
+import {studentProtectRoute} from '../middleware/student.js'
+
 
 const router = express.Router();
 
@@ -96,6 +99,147 @@ try {
 }
 
 
+});
+
+router.get('/get-allCourses', async (req, res) => {
+  try {
+    console.log('inside get all courses')
+    const allCourses = await Course.find().select('title duration description thumbnail skillsCovered category').populate("instructor","fullName");
+    res.status(200).json(allCourses);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch courses', error });
+  }
+});
+
+//this route will be used to fetch the individual course detail based on the id it get from the params
+
+router.get('/course-details/:id',async(req,res)=>{
+    const id = req.params.id;
+    try {
+      const courseDetail = await Course.findById(id).select("-lessons").populate('instructor',"fullName");
+      if(!courseDetail){
+        return res.status(404).json({
+          msg:'Course does not exist'
+        })
+      }
+
+      return res.status(200).json({
+        courseDetail
+      })
+      
+    } catch (error) {
+      
+    }
 })
+
+router.use(studentProtectRoute);
+
+//This route is created to get all the courses a student is enrolled in
+
+router.get('/getMyCourses', studentProtectRoute, async (req, res) => {
+  try {
+    const student = await Student.findById(req.user._id);
+    if (!student) {
+      return res.status(404).json({ msg: 'Student not found' });
+    }
+
+    // Get course IDs from enrolled courses
+    const courseIds = student.enrolledCourses.map(ec => ec.courseId);
+
+    // Get basic course information for enrolled courses
+    const courses = await Course.find(
+      { _id: { $in: courseIds } },
+      { _id: 1, title: 1, thumbnail: 1, lessons: 1 }
+    ).lean();
+
+    // Create a map for quick course lookup
+    const courseMap = {};
+    courses.forEach(course => {
+      courseMap[course._id.toString()] = {
+        title: course.title,
+        thumbnail: course.thumbnail,
+        totalLessons: course.lessons.length
+      };
+    });
+
+    // Prepare response with progress information
+    const enrolledCourses = student.enrolledCourses.map(enrollment => {
+      const courseInfo = courseMap[enrollment.courseId.toString()] || {};
+      
+      return {
+        courseId: enrollment.courseId,
+        title: enrollment.courseTitle,
+        thumbnail: enrollment.courseThumbnail,
+        progress: {
+          completed: enrollment.completedLessonIds.length,
+          total: courseInfo.totalLessons || 0,
+          percentage: courseInfo.totalLessons 
+            ? Math.round((enrollment.completedLessonIds.length / courseInfo.totalLessons) * 100)
+            : 0
+        },
+        available: !!courseInfo.title // Flag if course still exists
+      };
+    });
+
+    res.status(200).json({ enrolledCourses });
+  } catch (error) {
+    console.error('Error fetching enrolled courses:', error);
+    res.status(500).json({ msg: 'Internal server error' });
+  }
+});
+
+//This route is created for the student to enroll in the course
+
+router.post('/enroll/:id', async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const student = await Student.findById(req.user._id);
+    if (!student) {
+      return res.status(404).json({ msg: 'Student does not exist' });
+    }
+
+    const course = await Course.findById(id);
+    if (!course) {
+      return res.status(404).json({ msg: 'Course does not exist' });
+    }
+
+    // Check if already enrolled
+    const alreadyEnrolled = student.enrolledCourses.some(
+      c => c.courseId.toString() === id
+    );
+    
+    if (alreadyEnrolled) {
+      return res.status(400).json({ msg: 'Already enrolled in this course' });
+    }
+
+    // Create enrollment object (no need for separate model)
+    const enrollment = {
+      courseId: id,
+      courseTitle: course.title,
+      courseThumbnail: course.thumbnail,
+      completedLessonIds: [] // Initialize empty lessons
+    };
+
+    student.enrolledCourses.push(enrollment);
+    await student.save();
+
+    return res.status(200).json({
+      msg: 'Successfully enrolled in course',
+      course: {
+        _id: course._id,
+        title: course.title,
+        thumbnail: course.thumbnail
+      }
+    });
+  } catch (error) {
+    console.error('Enrollment error:', error);
+    return res.status(500).json({ msg: 'Internal server error' });
+  }
+});
+
+
+
+
 
 export default router;

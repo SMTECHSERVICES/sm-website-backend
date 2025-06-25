@@ -2,65 +2,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs'
 
-// const lessonSchema = new mongoose.Schema({
-//   lessonNumber: {
-//     type: Number,
-//     required: true,
-//   },
-//   title: {
-//     type: String,
-//     required: true,
-//     trim: true,
-//   },
-//   notesPdfLink: {
-//     type: String, // URL to PDF notes
-//   },
-//   videoLink: {
-//     type: String, // URL to video
-//   },
-//   liveClassLink: {
-//     type: String, // URL to live class (optional)
-//   },
-// }, { _id: true }); // Ensure lessons have their own _id
 
-// --- Course Schema (Main Source of Truth for Mentors/Admin) ---
-// This defines the main Course structure that mentors/admin will manage.
-// Lessons are added here by mentors regularly.
-// const courseSchema = new mongoose.Schema({
-//   title: {
-//     type: String,
-//     required: [true, 'Course title is required'],
-//     trim: true,
-//     unique: true,
-//   },
-//   description: {
-//     type: String,
-//     required: [true, 'Course description is required'],
-//   },
-//   thumbnail: {
-//     type: String, // URL to the course thumbnail
-//     default: 'https://placehold.co/600x400/CCCCCC/000000?text=Course+Thumbnail'
-//   },
-//   instructor: {
-//     type: mongoose.Schema.Types.ObjectId,
-//     ref: 'Mentor', // Assuming you have a Mentor model
-//   },
-//   lessons: [lessonSchema], // Array of lessons, this is where new lessons are added
-//   price: {
-//     type: Number,
-//     default: 0,
-//   },
-//   category: {
-//     type: String,
-//     trim: true,
-//   },
-//   isPublished: {
-//     type: Boolean,
-//     default: false,
-//   }
-// }, {
-//   timestamps: true,
-// });
 
 
 // --- Student Enrolled Course Sub-Schema (Student's Progress Only) ---
@@ -135,5 +77,6 @@ studentSchema.methods.comparePassword = async function (enteredPassword) {
 };
 
 const Student = mongoose.model("Student",studentSchema);
+const StudentEnrolledModel = mongoose.model("StudentEnrolledSchema",studentEnrolledCourseSchema)
 
-export default Student;
+export  {Student,StudentEnrolledModel};
