@@ -7,16 +7,24 @@ import cookieParser from 'cookie-parser';
 import studentRoutes from './routes/student.js';
 import mentorRoutes from './routes/mentor.js'
 
-const corsOption = {
-    origin:[
-        'http://localhost:5173',
-        'http://localhost:4173',
-         process.env.CLIENT_URL
-        ],
-        methods:["GET","POST","PUT","DELETE","PATCH"],
-    credentials:true,
-};
+// const corsOption = {
+//     origin:[
+//         'http://localhost:5173',
+//         'http://localhost:4173',
+//          process.env.CLIENT_URL
+//         ],
+//         methods:["GET","POST","PUT","DELETE","PATCH"],
+//     credentials:true,
+// };
 
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:4173',
+  process.env.CLIENT_URL?.trim()  // Handle potential whitespace
+].filter(Boolean); // Remove undefined values
+
+console.log("Allowed Origins:", allowedOrigins); // Debug log
 
 const app = express();
 
@@ -24,7 +32,25 @@ const port = 3000;
 
 dotenv.config();
 
-app.use(cors(corsOption))
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g., mobile apps, Postman)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.error(`CORS Blocked: ${origin} | Allowed: ${allowedOrigins}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
+
+
+//app.use(cors(corsOption))
 
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
