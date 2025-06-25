@@ -251,5 +251,39 @@ router.get('/course/detail/:id',async(req,res)=>{
 })
 
 
+router.post('/logout', async (req, res) => {
+  try {
+    // Get all cookies from the request
+    const cookies = req.cookies;
+    
+    // Clear each cookie individually with proper options
+    Object.keys(cookies).forEach(cookieName => {
+      res.clearCookie(cookieName, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        path: '/',
+        domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : undefined
+      });
+    });
+
+    // Additional security measures
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    
+    // Send successful logout response
+    res.status(200).json({ 
+      success: true,
+      message: 'Successfully logged out. All cookies cleared.' 
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during logout'
+    });
+  }
+});
+
 
 export default router;

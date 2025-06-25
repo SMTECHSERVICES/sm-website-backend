@@ -2,6 +2,8 @@
 
 
 import express from 'express';
+import mongoose from 'mongoose';
+
 import {Student,StudentEnrolledModel} from '../model/student.js';
 import {Course, Lesson} from '../model/course.js';
 import jwt from 'jsonwebtoken';
@@ -103,7 +105,7 @@ try {
 
 router.get('/get-allCourses', async (req, res) => {
   try {
-    console.log('inside get all courses')
+    //console.log('inside get all courses')
     const allCourses = await Course.find().select('title duration description thumbnail skillsCovered category').populate("instructor","fullName");
     res.status(200).json(allCourses);
   } catch (error) {
@@ -190,6 +192,8 @@ router.get('/getMyCourses', studentProtectRoute, async (req, res) => {
 
 //This route is created for the student to enroll in the course
 
+
+
 router.post('/enroll/:id', async (req, res) => {
   const id = req.params.id;
 
@@ -239,7 +243,160 @@ router.post('/enroll/:id', async (req, res) => {
 });
 
 
+//this route will fetch all the lesson and tittle of the course
+
+router.get('/myCourse/:id', async (req, res) => {
+  const courseId = req.params.id;
+  const studentId = req.user._id; // Assuming authenticated student ID from middleware
+
+  try {
+    // 1. Find the course
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ msg: 'Course does not exist' });
+    }
+
+    // 2. Find the student and their enrollment for this course
+    const student = await Student.findOne({
+      _id: studentId,
+      'enrolledCourses.courseId': courseId
+    }, {
+      'enrolledCourses.$': 1 // Project only the matching enrolled course
+    });
+
+    if (!student) {
+      return res.status(403).json({ msg: 'You are not enrolled in this course' });
+    }
+
+    const enrollment = student.enrolledCourses[0];
+
+    // 3. Prepare lesson data with completion status
+    const lessonsWithStatus = course.lessons.map(lesson => ({
+      _id: lesson._id,
+      lessonNumber: lesson.lessonNumber,
+      title: lesson.title,
+      notesPdfLink: lesson.notesPdfLink,
+      videoLink: lesson.videoLink,
+      liveClassLink: lesson.liveClassLink,
+      isCompleted: enrollment.completedLessonIds.some(
+        completedId => completedId.equals(lesson._id)
+      )
+    }));
+
+    // 4. Send the response
+    res.json({
+      _id: course._id,
+      title: course.title,
+      lessons: lessonsWithStatus,
+      completedLessons: enrollment.completedLessonIds,
+      progress: `${enrollment.completedLessonIds.length}/${course.lessons.length}`
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: 'Server error', error: error.message });
+  }
+});
 
 
+//this route will be used to mark the lesson as complete or false
+
+router.patch('/lesson/:id', async (req, res) => {
+  const lessonId = req.params.id;
+  const studentId = req.user._id; // From authentication middleware
+  const { completed } = req.body; // Expects { completed: true/false }
+
+  // Validate input
+  if (!mongoose.Types.ObjectId.isValid(lessonId)) {
+    return res.status(400).json({ msg: 'Invalid lesson ID' });
+  }
+
+  if (typeof completed !== 'boolean') {
+    return res.status(400).json({ msg: 'Missing completion status' });
+  }
+
+  try {
+    // 1. Find the course containing the lesson
+    const course = await Course.findOne({ "lessons._id": lessonId });
+    
+    if (!course) {
+      return res.status(404).json({ msg: 'Lesson not found in any course' });
+    }
+
+    // 2. Find student and their enrollment for this course
+    const student = await Student.findOne({
+      _id: studentId,
+      'enrolledCourses.courseId': course._id
+    });
+
+    if (!student) {
+      return res.status(403).json({ msg: 'Student not enrolled in this course' });
+    }
+
+    // 3. Update the completedLessonIds array
+    const updateOperation = completed
+      ? { $addToSet: { "enrolledCourses.$.completedLessonIds": lessonId } }
+      : { $pull: { "enrolledCourses.$.completedLessonIds": lessonId } };
+
+    // 4. Apply the update
+    const result = await Student.updateOne(
+      {
+        _id: studentId,
+        'enrolledCourses.courseId': course._id
+      },
+      updateOperation
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(400).json({ 
+        msg: completed 
+          ? 'Lesson already marked as completed' 
+          : 'Lesson was not completed'
+      });
+    }
+
+    res.json({ 
+      msg: `Lesson ${completed ? 'marked as complete' : 'marked as incomplete'}`
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: 'Server error', error: error.message });
+  }
+});
+
+router.post('/logout', async (req, res) => {
+  try {
+    // Get all cookies from the request
+    const cookies = req.cookies;
+    
+    // Clear each cookie individually with proper options
+    Object.keys(cookies).forEach(cookieName => {
+      res.clearCookie(cookieName, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        path: '/',
+        domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : undefined
+      });
+    });
+
+    // Additional security measures
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    
+    // Send successful logout response
+    res.status(200).json({ 
+      success: true,
+      message: 'Successfully logged out. All cookies cleared.' 
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during logout'
+    });
+  }
+});
 
 export default router;

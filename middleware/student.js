@@ -26,7 +26,7 @@ export const studentProtectRoute  = async(req,res,next)=>{
                 message:'User not found'
             })
         }
-        console.log('before user')
+        //console.log('before user')
         req.user = user
         
         next();;
@@ -36,8 +36,5 @@ export const studentProtectRoute  = async(req,res,next)=>{
             message:'Interna server error'
         })
     }
-
-  
-
     
 };
