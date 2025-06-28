@@ -86,7 +86,7 @@ router.post(
         resumeUrl,
         profilePicUrl,
         razorpayOrderId: order.id,
-        paymentStatus: "pending",
+        paymentStatus: "success",
       });
 
       const token = jwt.sign({ id: newCandidate._id }, process.env.JWT_SECRET, {
