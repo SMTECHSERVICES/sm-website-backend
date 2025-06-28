@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 
 import studentRoutes from './routes/student.js';
 import mentorRoutes from './routes/mentor.js'
+import razorpayRoutes from './routes/razorpay.js'
 
 // const corsOption = {
 //     origin:[
@@ -69,6 +70,7 @@ async function main() {
 
 app.use('/api/student',studentRoutes);
 app.use('/api/mentor',mentorRoutes);
+app.use('/api/razorpay',razorpayRoutes)
 
 
 
