@@ -114,6 +114,42 @@ router.post(
 );
 
 
+router.post("/verify-payment", async (req, res) => {
+  const { orderId, paymentId, signature } = req.body;
+
+  try {
+    const generatedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_SECRET_KEY)
+      .update(`${orderId}|${paymentId}`)
+      .digest("hex");
+
+    if (generatedSignature !== signature) {
+      return res.status(400).json({ message: "Invalid signature!" });
+    }
+
+    const candidate = await Candidate.findOneAndUpdate(
+      { razorpayOrderId: orderId },
+      {
+        razorpayPaymentId: paymentId,
+        razorpaySignature: signature,
+        paymentStatus: "completed",
+      },
+      { new: true }
+    );
+
+    if (!candidate) {
+      return res.status(404).json({ message: "Candidate not found for this orderId" });
+    }
+
+    return res.status(200).json({
+      message: "Payment verified and updated successfully",
+      candidate,
+    });
+  } catch (error) {
+    console.error("Payment verification error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+});
 
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const signature = req.headers['x-razorpay-signature'];

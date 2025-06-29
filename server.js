@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import studentRoutes from './routes/student.js';
 import mentorRoutes from './routes/mentor.js'
 import razorpayRoutes from './routes/razorpay.js'
+import employerRoutes from './routes/employer.js'
 
 // const corsOption = {
 //     origin:[
@@ -25,7 +26,7 @@ const allowedOrigins = [
   process.env.CLIENT_URL?.trim()  // Handle potential whitespace
 ].filter(Boolean); // Remove undefined values
 
-console.log("Allowed Origins:", allowedOrigins); // Debug log
+//console.log("Allowed Origins:", allowedOrigins); // Debug log
 
 const app = express();
 
@@ -70,7 +71,8 @@ async function main() {
 
 app.use('/api/student',studentRoutes);
 app.use('/api/mentor',mentorRoutes);
-app.use('/api/razorpay',razorpayRoutes)
+app.use('/api/razorpay',razorpayRoutes);
+app.use('/api/employer',employerRoutes);
 
 
 
